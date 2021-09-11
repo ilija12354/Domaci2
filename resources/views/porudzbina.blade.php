@@ -16,6 +16,8 @@
       <td>{{ $porudzbina->ime }}</td>
       <td> {{ $porudzbina->cena }}</td>
       <td><a onclick="obrisi({{ $porudzbina->id }})"> Obrisi </a>
+      <a href="/proizvodi/update/{{$porudzbina->id}}"> Promeni</a>
+     </td>
     </tbody>
 </table>
 

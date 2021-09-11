@@ -32,5 +32,6 @@ Route::post('/logout',[AuthController::class,'logout'])->name('logout');
 
 Route::get('/proizvodi', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
 Route::get('/proizvodi/create', [PorudzbineController::class, 'dodajPorudzbinu'])->name('dodajPorudzbinu');
+Route::get('/proizvodi/update/{id}', [PorudzbineController::class, 'promeniPorudzbinu'])->name('promeniPorudzbinu');
 Route::get('/proizvodi/{id}', [PorudzbineController::class,'prikaziPorudzbinu'])->name('prikaziPorudzbinu');
 Route::post('/porudzbina',[PorudzbinaController::class, 'porudzbina'])->name('porudzbina');

@@ -7,6 +7,7 @@ use App\Models\ShopingList;
 use App\Models\Post;
 use App\Http\Requests\UpadateUser;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class PorudzbineController extends Controller
 {
@@ -51,6 +52,27 @@ class PorudzbineController extends Controller
 
         $proizvod->save();
         return $proizvod;
+    }
+
+    public function promeniPorudzbinu($id)
+    {
+        $porudzbina=ShopingList::findOrFail($id);
+        return view('promeniPoruzbinu',compact('porudzbina'));
+    }
+
+    public function updatePorudzbine($id, Request $request)
+    {
+        $porudzbina = ShopingList::findOrFail($id);
+
+        $data = $request->validate([
+            'ime'=>'required',
+            'cena'=>'required',
+        ]);
+
+        $porudzbina->ime = $data['ime'];
+        $porudzbina->cena = $data['cena'];
+        $porudzbina->save();
+        return $porudzbina;
     }
     
 }
