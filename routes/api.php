@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::get('/proizvodi', [PorudzbineController::class, 'getPorudzbine'])->name('getPorudzbine');
+Route::get('proizvodi/search', [PorudzbineController::class, 'pretragaPorudzbina']);
 Route::get('/proizvodi/{id}', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
 Route::post('proizvodi/update/{id}',[PorudzbineController::class,'updatePorudzbine']);
 Route::delete('proizvodi/{id}',[PorudzbineController::class,'deletePorudzbine']);

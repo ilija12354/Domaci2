@@ -75,4 +75,10 @@ class PorudzbineController extends Controller
         return $porudzbina;
     }
     
+    public function pretragaPorudzbina(Request $request)
+    {
+        $upit = $request->input('upit', '');
+        $proizvodi = ShopingList::where('ime', 'like', '%' . $upit . '%')->get();
+        return $proizvodi;
+    }
 }
