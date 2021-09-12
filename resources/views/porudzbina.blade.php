@@ -26,6 +26,9 @@
   $.ajax({
    url: '/api/proizvodi/' + id,
    type: 'delete',
+   data: {
+    "_token": "{{ csrf_token() }}",
+   },
    success: function (data) {
     window.location.href = '/proizvodi';
    },

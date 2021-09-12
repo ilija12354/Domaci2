@@ -26,12 +26,17 @@ Route::get('/users/view/{id}', [UserController::class, 'viewUser'])->name('viewU
 Route::post('/users/update/{id}',[UserController::class,'updateUser'])->name ('updateUser');
 Route::post('/users/delete/{id}',[UserController::class,'deleteUser'])->name('deleteUser');
 
-Route::get('/login',[AuthController::class,'login'])->name('login')->middleware('guest');
-Route::post('/login',[AuthController::class,'signin'])->name('signin');
-Route::post('/logout',[AuthController::class,'logout'])->name('logout');
+Route::get('/login', [AuthController::class,'login'])->name('login')->middleware('guest');
+Route::post('/login', [AuthController::class,'signin'])->name('signin');
+Route::post('/logout', [AuthController::class,'logout'])->name('logout');
 
-Route::get('/proizvodi', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
-Route::get('/proizvodi/create', [PorudzbineController::class, 'dodajPorudzbinu'])->name('dodajPorudzbinu');
-Route::get('/proizvodi/update/{id}', [PorudzbineController::class, 'promeniPorudzbinu'])->name('promeniPorudzbinu');
-Route::get('/proizvodi/{id}', [PorudzbineController::class,'prikaziPorudzbinu'])->name('prikaziPorudzbinu');
+
+
+Route::group(['middleware' => 'auth:sanctum'], function () {
+  Route::get('/proizvodi', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
+  Route::get('/proizvodi/create', [PorudzbineController::class, 'dodajPorudzbinu'])->name('dodajPorudzbinu');
+  Route::get('/proizvodi/update/{id}', [PorudzbineController::class, 'promeniPorudzbinu'])->name('promeniPorudzbinu');
+  Route::get('/proizvodi/{id}', [PorudzbineController::class,'prikaziPorudzbinu'])->name('prikaziPorudzbinu');
+});
+
 Route::post('/porudzbina',[PorudzbinaController::class, 'porudzbina'])->name('porudzbina');

@@ -19,6 +19,7 @@
    var cena = $("input[name='cena'", forma).val();
    
    $.post('/api/proizvodi/create', {
+    "_token": "{{ csrf_token() }}",
     ime: ime,
     cena: cena,
    }, function (success) {
