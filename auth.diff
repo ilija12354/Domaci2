@@ -1,0 +1,307 @@
+diff --git a/app/Http/Controllers/AuthController.php b/app/Http/Controllers/AuthController.php
+old mode 100644
+new mode 100755
+index 025562d..d1ce9ca
+--- a/app/Http/Controllers/AuthController.php
++++ b/app/Http/Controllers/AuthController.php
+@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
+ 
+ use Illuminate\Http\Request;
+ use Illuminate\Support\Facades\Auth;
++use Illuminate\Support\Facades\Cookie;
++use Illuminate\Support\Facades\Redirect;
+ 
+ class AuthController extends Controller
+ {
+@@ -23,13 +25,18 @@ class AuthController extends Controller
+            'password'=>$request->password
+        ]))
+        {
+-           return redirect()->route('viewPorudzbine');
++           $user = Auth::user();
++           $token = $user->createToken('authToken');
++           $cookie = Cookie::make('token', $token->plainTextToken);
++           return redirect()->route('viewPorudzbine')->withCookies([$cookie]);
+        }
+        return redirect()->back()->with('danger','Login incorect');
+     }
+-    public function logout()
++    public function logout(Request $request)
+     {   
+-        
++        Cookie::forget('token');
++        $user = $request->user();
++        $user->tokens()->delete();        
+         Auth::logout();
+         return redirect()->route('login');
+     }
+diff --git a/app/Http/Controllers/PorudzbineController.php b/app/Http/Controllers/PorudzbineController.php
+old mode 100644
+new mode 100755
+index 58fb12b..17cc3d7
+--- a/app/Http/Controllers/PorudzbineController.php
++++ b/app/Http/Controllers/PorudzbineController.php
+@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
+ use App\Models\ShopingList;
+ use App\Models\Post;
+ use App\Http\Requests\UpadateUser;
++use Exception;
+ use Illuminate\Support\Facades\Hash;
+ use Illuminate\Support\Facades\Auth;
+ 
+@@ -15,20 +16,35 @@ class PorudzbineController extends Controller
+     {
+         return view('porudzbine');
+     }
+-    public function getPorudzbine()
++    public function getPorudzbine(Request $request)
+     {
+-        return ShopingList::all();
++        $user = $request->user();
++        return ShopingList::where('user_id', $user->id)->get();
+     }
+-    public function prikaziPorudzbinu($id)
++    public function prikaziPorudzbinu($id, Request $request)
+     {
+-        $porudzbina=ShopingList::findOrFail($id);
++        $user = $request->user();
++        
++        $porudzbina = ShopingList::findOrFail($id);
++
++        if ($porudzbina->user_id != $user->id) {
++            return redirect()->route('viewPorudzbine')->with('danger', 'Ne mozes da vidis tudj proizvod'); 
++        }
++
+         return view('porudzbina',compact('porudzbina'));
+     }
+ 
+-    public function deletePorudzbine($id)
++    public function deletePorudzbine($id, Request $request)
+     {
++        $user = $request->user();
++
+         $porudzbina = ShopingList::findOrFail($id);
+ 
++        if ($porudzbina->user_id != $user->id) 
++        {
++            throw new Exception('Nemas pravo da obrises tudj proizvod');
++        }
++
+         $porudzbina->delete();
+         return 'ok';
+     }
+@@ -45,10 +61,12 @@ class PorudzbineController extends Controller
+             'cena'=>'required',
+         ]);
+ 
++        $user = $request->user();
++
+         $proizvod = new ShopingList;
+         $proizvod->ime = $data['ime'];
+         $proizvod->cena = $data['cena'];
+-        $proizvod->user_id = 1;
++        $proizvod->user_id = $user->id;
+ 
+         $proizvod->save();
+         return $proizvod;
+@@ -62,8 +80,14 @@ class PorudzbineController extends Controller
+ 
+     public function updatePorudzbine($id, Request $request)
+     {
++        $user = $request->user();
+         $porudzbina = ShopingList::findOrFail($id);
+ 
++        if ($porudzbina->user_id != $user->id) {
++            // TODO: Greska
++            throw new Exception('Ne mozes da menjas tudji proizvod');
++        }
++
+         $data = $request->validate([
+             'ime'=>'required',
+             'cena'=>'required',
+@@ -77,8 +101,9 @@ class PorudzbineController extends Controller
+     
+     public function pretragaPorudzbina(Request $request)
+     {
++        $user = $request->user();
+         $upit = $request->input('upit', '');
+-        $proizvodi = ShopingList::where('ime', 'like', '%' . $upit . '%')->get();
++        $proizvodi = ShopingList::where('user_id', $user->id)->where('ime', 'like', '%' . $upit . '%')->get();
+         return $proizvodi;
+     }
+ }
+diff --git a/app/Http/Kernel.php b/app/Http/Kernel.php
+old mode 100644
+new mode 100755
+index 39910d7..157ac31
+--- a/app/Http/Kernel.php
++++ b/app/Http/Kernel.php
+@@ -40,7 +40,7 @@ class Kernel extends HttpKernel
+         ],
+ 
+         'api' => [
+-            // \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
++            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+             'throttle:api',
+             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+         ],
+diff --git a/database/migrations/2014_10_12_000000_create_users_table.php b/database/migrations/2014_10_12_000000_create_users_table.php
+old mode 100644
+new mode 100755
+index 15276a7..90d7c5c
+--- a/database/migrations/2014_10_12_000000_create_users_table.php
++++ b/database/migrations/2014_10_12_000000_create_users_table.php
+@@ -19,7 +19,7 @@ class CreateUsersTable extends Migration
+             $table->string('prezime');
+             $table->string('email')->unique();
+             $table->string('password');
+-           
++            $table->rememberToken();
+             $table->timestamps();
+         });
+     }
+diff --git a/database/migrations/2019_12_14_000001_create_personal_access_tokens_table.php b/database/migrations/2019_12_14_000001_create_personal_access_tokens_table.php
+new file mode 100644
+index 0000000..3ce0002
+--- /dev/null
++++ b/database/migrations/2019_12_14_000001_create_personal_access_tokens_table.php
+@@ -0,0 +1,36 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++class CreatePersonalAccessTokensTable extends Migration
++{
++    /**
++     * Run the migrations.
++     *
++     * @return void
++     */
++    public function up()
++    {
++        Schema::create('personal_access_tokens', function (Blueprint $table) {
++            $table->bigIncrements('id');
++            $table->morphs('tokenable');
++            $table->string('name');
++            $table->string('token', 64)->unique();
++            $table->text('abilities')->nullable();
++            $table->timestamp('last_used_at')->nullable();
++            $table->timestamps();
++        });
++    }
++
++    /**
++     * Reverse the migrations.
++     *
++     * @return void
++     */
++    public function down()
++    {
++        Schema::dropIfExists('personal_access_tokens');
++    }
++}
+diff --git a/resources/views/dodajPorudzbinu.blade.php b/resources/views/dodajPorudzbinu.blade.php
+old mode 100644
+new mode 100755
+index 5b688fc..fba507a
+--- a/resources/views/dodajPorudzbinu.blade.php
++++ b/resources/views/dodajPorudzbinu.blade.php
+@@ -19,6 +19,7 @@
+    var cena = $("input[name='cena'", forma).val();
+    
+    $.post('/api/proizvodi/create', {
++    "_token": "{{ csrf_token() }}",
+     ime: ime,
+     cena: cena,
+    }, function (success) {
+diff --git a/resources/views/porudzbina.blade.php b/resources/views/porudzbina.blade.php
+old mode 100644
+new mode 100755
+index 32ac713..1d2baaf
+--- a/resources/views/porudzbina.blade.php
++++ b/resources/views/porudzbina.blade.php
+@@ -26,6 +26,9 @@
+   $.ajax({
+    url: '/api/proizvodi/' + id,
+    type: 'delete',
++   data: {
++    "_token": "{{ csrf_token() }}",
++   },
+    success: function (data) {
+     window.location.href = '/proizvodi';
+    },
+diff --git a/resources/views/promeniPoruzbinu.blade.php b/resources/views/promeniPoruzbinu.blade.php
+old mode 100644
+new mode 100755
+index 515b5d7..e5583d2
+--- a/resources/views/promeniPoruzbinu.blade.php
++++ b/resources/views/promeniPoruzbinu.blade.php
+@@ -19,6 +19,7 @@
+    var cena = $("input[name='cena'", forma).val();
+    
+    $.post('/api/proizvodi/update/' + id, {
++    "_token": "{{ csrf_token() }}",
+     ime: ime,
+     cena: cena,
+    }, function (success) {
+diff --git a/routes/api.php b/routes/api.php
+old mode 100644
+new mode 100755
+index d53c7e9..fc0325a
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -14,13 +14,11 @@ use App\Http\Controllers\PorudzbineController;
+ |
+ */
+ 
+-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+-    return $request->user();
++Route::group(['middleware' => 'auth:sanctum'], function () {
++    Route::get('/proizvodi', [PorudzbineController::class, 'getPorudzbine'])->name('getPorudzbine');
++    Route::post('proizvodi/create',[PorudzbineController::class,'createPorudzbine']);
++    Route::get('proizvodi/search', [PorudzbineController::class, 'pretragaPorudzbina']);
++    Route::get('/proizvodi/{id}', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
++    Route::post('proizvodi/update/{id}',[PorudzbineController::class,'updatePorudzbine']);
++    Route::delete('proizvodi/{id}',[PorudzbineController::class,'deletePorudzbine']);
+ });
+-
+-Route::get('/proizvodi', [PorudzbineController::class, 'getPorudzbine'])->name('getPorudzbine');
+-Route::get('proizvodi/search', [PorudzbineController::class, 'pretragaPorudzbina']);
+-Route::get('/proizvodi/{id}', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
+-Route::post('proizvodi/update/{id}',[PorudzbineController::class,'updatePorudzbine']);
+-Route::delete('proizvodi/{id}',[PorudzbineController::class,'deletePorudzbine']);
+-Route::post('proizvodi/create',[PorudzbineController::class,'createPorudzbine']);
+diff --git a/routes/web.php b/routes/web.php
+old mode 100644
+new mode 100755
+index 1cf24f5..9251c8f
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -26,12 +26,17 @@ Route::get('/users/view/{id}', [UserController::class, 'viewUser'])->name('viewU
+ Route::post('/users/update/{id}',[UserController::class,'updateUser'])->name ('updateUser');
+ Route::post('/users/delete/{id}',[UserController::class,'deleteUser'])->name('deleteUser');
+ 
+-Route::get('/login',[AuthController::class,'login'])->name('login')->middleware('guest');
+-Route::post('/login',[AuthController::class,'signin'])->name('signin');
+-Route::post('/logout',[AuthController::class,'logout'])->name('logout');
+-
+-Route::get('/proizvodi', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
+-Route::get('/proizvodi/create', [PorudzbineController::class, 'dodajPorudzbinu'])->name('dodajPorudzbinu');
+-Route::get('/proizvodi/update/{id}', [PorudzbineController::class, 'promeniPorudzbinu'])->name('promeniPorudzbinu');
+-Route::get('/proizvodi/{id}', [PorudzbineController::class,'prikaziPorudzbinu'])->name('prikaziPorudzbinu');
++Route::get('/login', [AuthController::class,'login'])->name('login')->middleware('guest');
++Route::post('/login', [AuthController::class,'signin'])->name('signin');
++Route::post('/logout', [AuthController::class,'logout'])->name('logout');
++
++
++
++Route::group(['middleware' => 'auth:sanctum'], function () {
++  Route::get('/proizvodi', [PorudzbineController::class, 'viewPorudzbine'])->name('viewPorudzbine');
++  Route::get('/proizvodi/create', [PorudzbineController::class, 'dodajPorudzbinu'])->name('dodajPorudzbinu');
++  Route::get('/proizvodi/update/{id}', [PorudzbineController::class, 'promeniPorudzbinu'])->name('promeniPorudzbinu');
++  Route::get('/proizvodi/{id}', [PorudzbineController::class,'prikaziPorudzbinu'])->name('prikaziPorudzbinu');
++});
++
+ Route::post('/porudzbina',[PorudzbinaController::class, 'porudzbina'])->name('porudzbina');

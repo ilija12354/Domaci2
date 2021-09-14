@@ -3,6 +3,7 @@
 
 
 @section('nesto')
+
 <form id="addProizvod" class="form-signin" onsubmit="dodajProizvod(event)">
    @csrf
    <h1 class="h3 mb-3 font-weight-normal">Napravite novi proizvod</h1>

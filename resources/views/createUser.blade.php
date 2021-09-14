@@ -1,7 +1,7 @@
-@extends('includes.master')
+@extends('includes.prijava')
 
 
-@section('nesto')
+@section('nesto2')
 
 
     @include('includes.validation')

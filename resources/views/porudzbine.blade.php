@@ -3,8 +3,12 @@
 
 
 @section('nesto')
-<a class='btn' href='/proizvodi/create'>Dodaj</a>
-<input id="pretraga" type="text" /><div onclick="pretrazi()" class='btn'>Pretraga</div>
+<form action="{{route('dodajPorudzbinu')}}" method="get">
+    @csrf
+    <button type="submit" class="btn btn-dark">Dodaj nov proizvod</button>
+</form>
+<input id="pretraga" type="text" placeholder="pretrazi"/>
+<button type="button" class="btn btn-dark" onclick="pretrazi()">Pretrazi</button>
 <table id="porudzbine_list" class="table table-dark">
     <thead>
         <tr>
@@ -22,7 +26,7 @@
             $.get('api/proizvodi',function(data){
                 for (var i = 0; i < data.length; i++) {
                     var newLine = '<tr><td>' + data[i].ime + '</td><td>' + data[i].cena + '</td> \
-                    <td><a href="proizvodi/' + data[i].id + '">Vidi</a> </td></tr>';
+                    <td><a href="proizvodi/' + data[i].id + '">Pogledaj proizvod</a> </td></tr>';
                     tableBody.append(newLine);
                 }
             });
